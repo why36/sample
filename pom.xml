@@ -60,7 +60,7 @@
 
           <archive>
                <manifest>
-                <mainClass>WordCount</mainClass> 
+                <mainClass>nju.WordCount</mainClass> 
                  <addClasspath>true</addClasspath>
                    <classpathPrefix>lib/</classpathPrefix>
                             </manifest>
