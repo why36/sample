@@ -78,18 +78,24 @@ public class WordCount {
                     ) throws IOException, InterruptedException {
       String line = (caseSensitive) ?
           value.toString() : value.toString().toLowerCase();
-      line = line.replaceAll("\\d+", "");
-      line = line.replaceAll("[\\pP+~$`^=|<>～｀＄＾＋＝｜＜＞￥×]","");
+      line = line.replaceAll("\\d+", "");//数字
+      line = line.replaceAll("[\\pP+~$`^=|<>～｀＄＾＋＝｜＜＞￥×]","");//一切标点
       for (String pattern : patternsToSkip) {
         line = line.replaceAll(pattern, "");
       }
       StringTokenizer itr = new StringTokenizer(line);
       while (itr.hasMoreTokens()) {
-        word.set(itr.nextToken());
+        String nextToken = itr.nextToken(); //提取每个单词  而不是一行Line  用来匹配停词
+        if(nextToken.length()<3) continue;
+        for(String pattern : patternsToSkip){
+          if(nextToken.equals(pattern)) continue;
+        }
+        word.set(nextToken);
         context.write(word, one);
         Counter counter = context.getCounter(CountersEnum.class.getName(),
             CountersEnum.INPUT_WORDS.toString());
         counter.increment(1);
+        
       }
     }
   }
