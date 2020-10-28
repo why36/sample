@@ -78,6 +78,8 @@ public class WordCount {
                     ) throws IOException, InterruptedException {
       String line = (caseSensitive) ?
           value.toString() : value.toString().toLowerCase();
+      line = line.replaceAll("\\d+", "");
+      line = line.replaceAll("[\\pP+~$`^=|<>～｀＄＾＋＝｜＜＞￥×]","");
       for (String pattern : patternsToSkip) {
         line = line.replaceAll(pattern, "");
       }
@@ -109,7 +111,6 @@ public class WordCount {
   }
 /*
   private static class IntWritableDecreasingComparator extends IntWritable.Comparator {
-
     public int compare(WritableComparable a,WritableComparable b){
         return -super.compare(a, b);
       }
