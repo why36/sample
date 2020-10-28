@@ -25,3 +25,9 @@ buildNumber.properties
 .factorypath
 .project
 .vscode/
+
+target/*
+!sample-1.0-SNAPSHOT.jar
+.travis.yml
+.gitattributes
+.editorconfig

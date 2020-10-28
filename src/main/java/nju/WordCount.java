@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -49,7 +50,7 @@ public class WordCount {
     public void setup(Context context) throws IOException,
         InterruptedException {
       conf = context.getConfiguration();
-      caseSensitive = conf.getBoolean("wordcount.case.sensitive", true);
+      caseSensitive = conf.getBoolean("wordcount.case.sensitive", false);
       if (conf.getBoolean("wordcount.skip.patterns", false)) {
         URI[] patternsURIs = Job.getInstance(conf).getCacheFiles();
         for (URI patternsURI : patternsURIs) {
@@ -80,22 +81,21 @@ public class WordCount {
           value.toString() : value.toString().toLowerCase();
       line = line.replaceAll("\\d+", "");//数字
       line = line.replaceAll("[\\pP+~$`^=|<>～｀＄＾＋＝｜＜＞￥×]","");//一切标点
-      for (String pattern : patternsToSkip) {
-        line = line.replaceAll(pattern, "");
-      }
+
       StringTokenizer itr = new StringTokenizer(line);
-      while (itr.hasMoreTokens()) {
-        String nextToken = itr.nextToken(); //提取每个单词  而不是一行Line  用来匹配停词
-        if(nextToken.length()<3) continue;
-        for(String pattern : patternsToSkip){
-          if(nextToken.equals(pattern)) continue;
-        }
-        word.set(nextToken);
-        context.write(word, one);
-        Counter counter = context.getCounter(CountersEnum.class.getName(),
-            CountersEnum.INPUT_WORDS.toString());
-        counter.increment(1);
-        
+        while(itr.hasMoreTokens()){
+          boolean flag = true;
+          String tmpToken = itr.nextToken(); //不能使用整行line
+          if(tmpToken.length()<3) continue;
+          for (String pattern : patternsToSkip){
+            if(Pattern.matches(pattern,tmpToken)) flag = false;
+          }
+          if(flag){
+            word.set(tmpToken);
+					  context.write(word,one);  
+					  Counter counter = context.getCounter(CountersEnum.class.getName(),CountersEnum.INPUT_WORDS.toString());
+					  counter.increment(1);
+				}
       }
     }
   }
@@ -115,7 +115,7 @@ public class WordCount {
       context.write(key, result);
     }
   }
-/*
+
   private static class IntWritableDecreasingComparator extends IntWritable.Comparator {
     public int compare(WritableComparable a,WritableComparable b){
         return -super.compare(a, b);
@@ -125,29 +125,16 @@ public class WordCount {
         return -super.compare(b1, s1, l1, b2, s2, l2);
       }     
   }
-*/
-
-	private static class Decrease extends IntWritable.Comparator {
-		public int compare(WritableComparable value1, WritableComparable value2) {
-			int t1 = -super.compare(value1, value2);
-			return t1;
-		}
-		public int compare(byte[] key1, int value1, int value12, byte[] key2, int value2, int value22) {
-			int t2 = -super.compare(key1, value1, value12, key2, value2, value22);
-			return t2;
-		}
-	}
 
 	public static class MyReducer extends Reducer <IntWritable,Text,Text,IntWritable>{
-		private int OutputSum=0;
+		private int cnt=0;
 		public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			for (Text val:values)
-			{
-				OutputSum = OutputSum+1;
-				if(OutputSum > 100)             //输出前（）个
+			for (Text val:values){
+				cnt = cnt+1;
+				if(cnt > 100)
 					return;
 				else{
-					String t = OutputSum + ":" + val.toString() + ",";
+					String t = cnt + ":" + val.toString() + ",";
 					Text WORD = new Text(t);
 					context.write(WORD, key);
 				}
@@ -192,12 +179,13 @@ public class WordCount {
     System.out.println("开始第二个任务");
 
     Job sortjob = Job.getInstance(conf, "word count sort");
+    sortjob.setJarByClass(WordCount.class);
     FileInputFormat.addInputPath(sortjob, intermediatePath);
     FileOutputFormat.setOutputPath(sortjob, new Path(otherArgs.get(1)));
     sortjob.setInputFormatClass(SequenceFileInputFormat.class);
     sortjob.setMapperClass(InverseMapper.class);
     sortjob.setReducerClass(MyReducer.class);
-    sortjob.setSortComparatorClass(Decrease.class);
+    sortjob.setSortComparatorClass(IntWritableDecreasingComparator.class);
     sortjob.setOutputKeyClass(IntWritable.class);
     sortjob.setOutputValueClass(Text.class);
 
